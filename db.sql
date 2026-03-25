@@ -67,3 +67,13 @@ ALTER TABLE article
 -- 为 article 表添加 style 字段（文章风格）
 ALTER TABLE article
     ADD COLUMN style VARCHAR(20) NULL COMMENT '文章风格：tech/emotional/educational/humorous' AFTER topic;
+
+-- 添加 quota 字段
+ALTER TABLE user ADD COLUMN quota int default 5 not null comment '剩余配额' AFTER userRole;
+
+-- 为已有用户设置默认配额
+UPDATE user SET quota = 5 WHERE quota IS NULL;
+
+-- 1. 扩展 user 表，添加会员相关字段
+ALTER TABLE user
+    ADD COLUMN vipTime DATETIME NULL COMMENT '成为会员时间';

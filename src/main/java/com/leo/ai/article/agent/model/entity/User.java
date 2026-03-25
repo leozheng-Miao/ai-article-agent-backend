@@ -41,6 +41,12 @@ public class User implements Serializable {
     @Column("userRole")
     private String userRole;
 
+    @Column("quota")
+    private Integer quota;
+
+    @Column("vipTime")
+    private LocalDateTime vipTime;
+
     @Column("editTime")
     private LocalDateTime editTime;
 

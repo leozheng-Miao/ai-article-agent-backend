@@ -10,6 +10,7 @@ import com.leo.ai.article.agent.manager.SseEmitterManager;
 import com.leo.ai.article.agent.model.dto.article.ArticleCreateRequest;
 import com.leo.ai.article.agent.model.dto.article.ArticleQueryRequest;
 import com.leo.ai.article.agent.model.entity.User;
+import com.leo.ai.article.agent.model.enums.ArticleStyleEnum;
 import com.leo.ai.article.agent.model.vo.ArticleVO;
 import com.leo.ai.article.agent.service.ArticleAsyncService;
 import com.leo.ai.article.agent.service.UserService;
@@ -42,7 +43,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/article")
-@Tag(name = "文章接口")
 @Slf4j
 public class ArticleController {
 
@@ -67,14 +67,24 @@ public class ArticleController {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(request.getTopic() == null || request.getTopic().trim().isEmpty(),
                 ErrorCode.PARAMS_ERROR, "选题不能为空");
+        ThrowUtils.throwIf(!ArticleStyleEnum.isValid(request.getStyle()), ErrorCode.PARAMS_ERROR, "文章风格不合法");
 
         User loginUser = userService.getLoginUser(httpServletRequest);
 
         // 创建文章任务
-        String taskId = articleService.createArticleTask(request.getTopic(), loginUser);
+        String taskId = articleService.createArticleTask(
+                request.getTopic(),
+                request.getStyle(),
+                request.getEnabledImageMethods(),
+                loginUser);
 
         // 异步执行文章生成
-        articleAsyncService.executeArticleGeneration(taskId, request.getTopic());
+        articleAsyncService.executeArticleGeneration(
+                taskId,
+                request.getTopic(),
+                request.getStyle(),
+                request.getEnabledImageMethods()
+        );
 
         return ResultUtils.success(taskId);
     }

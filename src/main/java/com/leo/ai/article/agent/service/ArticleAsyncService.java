@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -34,7 +35,7 @@ public class ArticleAsyncService {
      * @param topic  选题
      */
     @Async("articleExecutor")
-    public void executeArticleGeneration(String taskId, String topic) {
+    public void executeArticleGeneration(String taskId, String topic, String style, List<String> enabledImageMethods) {
         log.info("异步任务开始, taskId={}, topic={}", taskId, topic);
         
         try {
@@ -45,6 +46,8 @@ public class ArticleAsyncService {
             ArticleState state = new ArticleState();
             state.setTaskId(taskId);
             state.setTopic(topic);
+            state.setStyle(style);
+            state.setEnabledImageMethods(enabledImageMethods);
             
             // 执行智能体编排,并通过 SSE 推送进度
             articleAgentService.executeArticleGeneration(state, message -> {

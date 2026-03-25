@@ -1,6 +1,8 @@
 package com.leo.ai.article.agent.service;
 
 
+import com.leo.ai.article.agent.model.dto.image.ImageData;
+import com.leo.ai.article.agent.model.dto.image.ImageRequest;
 import com.leo.ai.article.agent.model.enums.ImageMethodEnum;
 
 /**
@@ -10,6 +12,27 @@ import com.leo.ai.article.agent.model.enums.ImageMethodEnum;
  * @author <a href="https://codefather.cn">编程导航学习圈</a>
  */
 public interface ImageSearchService {
+
+    /**
+     *  根据请求获取图片
+     * @param request 图片请求对象， 包含 keywords、 prompt 等参数
+     * @return 图片 url， 获取失败返回 null
+     */
+    default String getImage(ImageRequest request) {
+        String param = request.getEffectiveParam(getMethod().isAiGenerated());
+        return searchImage(param);
+    }
+
+    /**
+     * 获取图片数据 - 用于统一上传到 COS
+     * 子类可重写此方法返回更高效的数据格式
+     * @param request 图片请求对象
+     * @return ImageData 对象，包含图片字节或 URL
+     */
+    default ImageData getImageData(ImageRequest request) {
+        String url = getImage(request);
+        return ImageData.fromUrl(url);
+    }
 
     /**
      * 根据关键词检索图片
@@ -33,4 +56,13 @@ public interface ImageSearchService {
      * @return 降级图片 URL
      */
     String getFallbackImage(int position);
+
+    /**
+     * 判断服务是否可用
+     * 子类可重写此方法进行健康检查
+     * @return 服务是否可用
+     */
+    default boolean isAvailable() {
+        return true;
+    }
 }
