@@ -1,8 +1,9 @@
-package com.leo.ai.article.agent.service;
+package com.leo.ai.article.agent.service.impl;
 
 import com.leo.ai.article.agent.model.dto.image.ImageData;
 import com.leo.ai.article.agent.model.dto.image.ImageRequest;
 import com.leo.ai.article.agent.model.enums.ImageMethodEnum;
+import com.leo.ai.article.agent.service.ImageSearchService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

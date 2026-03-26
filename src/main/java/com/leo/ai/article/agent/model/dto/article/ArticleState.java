@@ -38,7 +38,7 @@ public class ArticleState implements Serializable {
     /**
      * 标题方案列表（智能体1输出）
      */
-    private List<ArticleVO.TitleOption> titleOptions;
+    private List<TitleOption> titleOptions;
 
     /**
      * 标题结果（智能体1输出）
@@ -86,6 +86,15 @@ public class ArticleState implements Serializable {
      */
     @Data
     public static class TitleResult implements Serializable {
+        private String mainTitle;
+        private String subTitle;
+    }
+
+    /**
+     * 标题方案
+     */
+    @Data
+    public static class TitleOption implements Serializable {
         private String mainTitle;
         private String subTitle;
     }

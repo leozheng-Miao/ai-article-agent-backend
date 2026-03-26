@@ -1,4 +1,4 @@
-package com.leo.ai.article.agent.service;
+package com.leo.ai.article.agent.service.impl;
 
 import com.leo.ai.article.agent.config.CosConfig;
 import com.leo.ai.article.agent.model.dto.image.ImageData;
