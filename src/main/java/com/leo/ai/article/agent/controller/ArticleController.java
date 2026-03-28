@@ -215,7 +215,7 @@ public class ArticleController {
      */
     @PostMapping("/list")
     @Operation(summary = "分页查询文章列表")
-    @AuthCheck(mustRole = "user")
+//    @AuthCheck(mustRole = "user")
     public BaseResponse<Page<ArticleVO>> listArticle(@RequestBody ArticleQueryRequest request,
                                                      HttpServletRequest httpServletRequest) {
         User loginUser = userService.getLoginUser(httpServletRequest);
