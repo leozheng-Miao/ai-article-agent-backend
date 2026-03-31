@@ -61,6 +61,7 @@ public class ArticleAsyncService {
             state.setTaskId(taskId);
             state.setTopic(topic);
             state.setStyle(style);
+//            state.setEnabledImageMethods();
 
             // 执行阶段1：生成标题方案 - 根据配置选择执行方式
             if (useOrchestrator) {

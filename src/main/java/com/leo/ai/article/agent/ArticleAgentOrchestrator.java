@@ -149,10 +149,6 @@ public class ArticleAgentOrchestrator {
                 
                 ArticleState.OutlineResult outline = finalState.value(KEY_OUTLINE)
                         .map(v -> {
-//                            if (v instanceof ArticleState.OutlineResult) {
-//                                return (ArticleState.OutlineResult) v;
-//                            }
-//                            return null;
                             try {
                                 return objectMapper.convertValue(v, ArticleState.OutlineResult.class);
                             } catch (Exception e) {

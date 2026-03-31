@@ -61,7 +61,10 @@ public class ArticleServiceImpl extends ServiceImpl<ArticleMapper, Article> impl
         article.setUserId(loginUser.getId());
         article.setTopic(topic);
         article.setStyle(style);
+        article.setEnabledImageMethods(finalImageMethods != null && !finalImageMethods.isEmpty()
+                ? GsonUtils.toJson(finalImageMethods) : null);
         article.setStatus(ArticleStatusEnum.PENDING.getValue());
+        article.setPhase(ArticlePhaseEnum.PENDING.getValue());
         article.setCreateTime(LocalDateTime.now());
 
         this.save(article);
