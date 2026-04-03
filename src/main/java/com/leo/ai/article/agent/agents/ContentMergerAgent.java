@@ -2,6 +2,7 @@ package com.leo.ai.article.agent.agents;
 
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.leo.ai.article.agent.annotation.AgentExecution;
 import com.leo.ai.article.agent.model.dto.article.ArticleState;
 import com.leo.ai.article.agent.tools.ImageGenerationTool;
 import com.leo.ai.article.agent.utils.GsonUtils;
@@ -27,6 +28,7 @@ public class ContentMergerAgent implements NodeAction {
     public static final String OUTPUT_FULL_CONTENT = "fullContent";
 
     @Override
+    @AgentExecution(value = "agent6_merge_content", description = "图文合成")
     public Map<String, Object> apply(OverAllState state) throws Exception {
         String content = state.value(INPUT_CONTENT)
                 .map(Object::toString)

@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
 import com.google.gson.reflect.TypeToken;
+import com.leo.ai.article.agent.annotation.AgentExecution;
 import com.leo.ai.article.agent.constant.PromptConstant;
 import com.leo.ai.article.agent.model.dto.article.ArticleState;
 import com.leo.ai.article.agent.model.enums.ArticleStyleEnum;
@@ -34,6 +35,7 @@ public class TitleGeneratorAgent implements NodeAction {
     public static final String OUTPUT_TITLE_OPTIONS = "titleOptions";
 
     @Override
+    @AgentExecution(value = "agent1_generate_titles", description = "生成标题方案")
     public Map<String, Object> apply(OverAllState state) throws Exception {
         String topic = state.value(INPUT_TOPIC)
                 .map(Object::toString)
@@ -49,19 +51,19 @@ public class TitleGeneratorAgent implements NodeAction {
         String prompt = PromptConstant.AGENT1_TITLE_PROMPT
                 .replace("{topic}", topic)
                 + getStylePrompt(style);
-        
+
         // 调用 LLM
         ChatResponse response = chatModel.call(new Prompt(new UserMessage(prompt)));
         String content = response.getResult().getOutput().getText();
-        
+
         // 解析结果
         List<ArticleState.TitleOption> titleOptions = GsonUtils.fromJson(
                 content,
                 new TypeToken<List<ArticleState.TitleOption>>(){}
         );
-        
+
         log.info("TitleGeneratorAgent 执行完成: 生成了 {} 个标题方案", titleOptions.size());
-        
+
         return Map.of(OUTPUT_TITLE_OPTIONS, titleOptions);
     }
 

@@ -3,6 +3,7 @@ package com.leo.ai.article.agent.agents;
 import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.leo.ai.article.agent.annotation.AgentExecution;
 import com.leo.ai.article.agent.constant.PromptConstant;
 import com.leo.ai.article.agent.model.dto.article.ArticleState;
 import com.leo.ai.article.agent.model.enums.ImageMethodEnum;
@@ -36,6 +37,7 @@ public class ImageAnalyzerAgent implements NodeAction {
     public static final String OUTPUT_IMAGE_REQUIREMENTS = "imageRequirements";
 
     @Override
+    @AgentExecution(value = "agent4_analyze_image_requirements", description = "分析配图需求")
     public Map<String, Object> apply(OverAllState state) throws Exception {
         String mainTitle = state.value(INPUT_MAIN_TITLE)
                 .map(Object::toString)

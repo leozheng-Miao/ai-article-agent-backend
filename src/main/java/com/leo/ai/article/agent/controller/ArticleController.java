@@ -198,7 +198,7 @@ public class ArticleController {
      */
     @GetMapping("/{taskId}")
     @Operation(summary = "获取文章详情")
-    @AuthCheck(mustRole = "user")
+//    @AuthCheck(mustRole = "user")
     public BaseResponse<ArticleVO> getArticle(@PathVariable String taskId,
                                               HttpServletRequest httpServletRequest) {
         ThrowUtils.throwIf(taskId == null || taskId.trim().isEmpty(),

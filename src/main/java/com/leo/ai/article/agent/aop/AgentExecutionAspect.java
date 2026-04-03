@@ -1,5 +1,6 @@
 package com.leo.ai.article.agent.aop;
 
+import com.alibaba.cloud.ai.graph.OverAllState;
 import com.leo.ai.article.agent.annotation.AgentExecution;
 import com.leo.ai.article.agent.model.dto.article.ArticleState;
 import com.leo.ai.article.agent.model.entity.AgentLog;
@@ -34,6 +35,7 @@ public class AgentExecutionAspect {
 
     @Around("@annotation(agentExecution)")
     public Object doInterceptor(ProceedingJoinPoint pjp, AgentExecution agentExecution) throws Throwable {
+        log.info("==================== AOP 切面生效了！=====================");
 
         long startTime = System.currentTimeMillis();
         LocalDateTime startDateTime = LocalDateTime.now();
@@ -41,10 +43,11 @@ public class AgentExecutionAspect {
         String taskId = extractTaskId(pjp);
         String inputData = extractInputData(pjp);
         String prompt = extractPrompt(pjp);
+        String agentName = agentExecution.value();
 
         AgentLog agentLog = AgentLog.builder()
                 .taskId(taskId)
-                .agentName(agentExecution.value())
+                .agentName(agentName)
                 .startTime(startDateTime)
                 .status("RUNNING")
                 .prompt(prompt)
@@ -59,13 +62,13 @@ public class AgentExecutionAspect {
             agentLog.setEndTime(LocalDateTime.now());
             agentLog.setDurationMs((int) (System.currentTimeMillis() - startTime));
             agentLog.setOutputData(extractOutputData(res));
-            log.info("智能体执行成功: {}, taskId = {}, 耗时 = {}ms", agentExecution.value(), taskId, agentLog.getDurationMs());
+            log.info("智能体执行成功: {}, taskId = {}, 耗时 = {}ms", agentName, taskId, agentLog.getDurationMs());
         } catch (Throwable throwable) {
             agentLog.setStatus("FAILED");
             agentLog.setEndTime(LocalDateTime.now());
             agentLog.setDurationMs((int) (System.currentTimeMillis() - startTime));
             agentLog.setOutputData(throwable.getMessage() != null ? throwable.getMessage() : throwable.getClass().getName());
-            log.error("智能体执行失败: {}, taskId = {}, 耗时 = {}ms", agentExecution.value(), taskId, agentLog.getDurationMs(), throwable);
+            log.error("智能体执行失败: {}, taskId = {}, 耗时 = {}ms", agentName, taskId, agentLog.getDurationMs(), throwable);
             throw throwable;
         } finally {
             agentExecutionService.saveLogAsync(agentLog);
@@ -87,6 +90,14 @@ public class AgentExecutionAspect {
             if (arg instanceof ArticleState) {
                 return ((ArticleState) arg).getTaskId();
             }
+            // 新增：支持 OverAllState
+            if (arg instanceof OverAllState) {
+                OverAllState state = (OverAllState) arg;
+
+                return state.value("taskId")
+                        .map(Object::toString)
+                        .orElse("unknown");
+            }
         }
 
         // 尝试从第一个 String 参数获取（可能是 taskId）
@@ -95,6 +106,8 @@ public class AgentExecutionAspect {
                 return (String) arg;
             }
         }
+
+
 
         return "unknown";
     }

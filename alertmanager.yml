@@ -1,0 +1,15 @@
+global:
+  smtp_smarthost: 'smtp.qq.com:465'
+  smtp_from: '1154027884@qq.com'
+  smtp_auth_username: '1154027884@qq.com'
+  smtp_auth_password: 'ynbzhruwjezvbagh'
+  smtp_require_tls: true
+
+route:
+  receiver: 'email-alert'
+
+receivers:
+  - name: 'email-alert'
+    email_configs:
+      - to: 'leozheng0508@gmail.com'
+        send_resolved: true

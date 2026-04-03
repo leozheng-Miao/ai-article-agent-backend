@@ -55,6 +55,23 @@ article:
       # 是否启用多智能体编排模式（支持配图并行生成）
       # true: 使用 Spring AI Alibaba 多智能体编排
       # false: 使用原有的 ArticleAgentService
-      enabled: true
+      enabled: false
     # Agent 最大迭代次数
     max-iterations: 10
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      access: unrestricted
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

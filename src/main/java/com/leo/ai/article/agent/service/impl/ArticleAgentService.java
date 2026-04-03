@@ -4,6 +4,7 @@ import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
 import com.google.gson.reflect.TypeToken;
 import com.leo.ai.article.agent.annotation.AgentExecution;
 import com.leo.ai.article.agent.constant.PromptConstant;
+import com.leo.ai.article.agent.matrics.AIMetricsCollector;
 import com.leo.ai.article.agent.model.dto.article.ArticleState;
 import com.leo.ai.article.agent.model.dto.image.ImageRequest;
 import com.leo.ai.article.agent.model.enums.ArticleStyleEnum;
@@ -13,6 +14,7 @@ import com.leo.ai.article.agent.utils.GsonUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.aop.framework.AopContext;
@@ -31,8 +33,8 @@ public class ArticleAgentService {
     private DashScopeChatModel chatModel;
     @Resource
     private ImageServiceStrategy imageServiceStrategy;
-//    @Resource
-//    private ArticleAgentService self;
+    @Resource
+    private AIMetricsCollector aiMetricsCollector;
 
     /**
      * 阶段1：生成标题方案（3-5个）
@@ -123,7 +125,8 @@ public class ArticleAgentService {
         String content = callLlm(prompt);
         List<ArticleState.TitleOption> titleOptions = parseJsonListResponse(
                 content,
-                new TypeToken<List<ArticleState.TitleOption>>(){},
+                new TypeToken<List<ArticleState.TitleOption>>() {
+                },
                 "标题方案"
         );
         state.setTitleOptions(titleOptions);
@@ -133,36 +136,36 @@ public class ArticleAgentService {
 
     /**
      * 智能体2：生成大纲（流式输出）
- * 该方法负责根据文章标题、副标题和用户描述生成文章大纲，并通过流式输出返回结果
- *
- * @param state 当前文章状态对象，包含标题、副标题、用户描述等信息
- * @param streamHandler 流式输出处理器，用于实时处理生成的内容
+     * 该方法负责根据文章标题、副标题和用户描述生成文章大纲，并通过流式输出返回结果
+     *
+     * @param state         当前文章状态对象，包含标题、副标题、用户描述等信息
+     * @param streamHandler 流式输出处理器，用于实时处理生成的内容
      */
     @AgentExecution(value = "agent2_generate_outlines", description = "生成文章大纲")
     public void agent2GenerateOutline(ArticleState state, Consumer<String> streamHandler) {
         // 构建 prompt，根据是否有用户补充描述插入对应部分
         String descriptionSection = "";
-    // 检查用户描述是否存在且不为空
+        // 检查用户描述是否存在且不为空
         if (state.getUserDescription() != null && !state.getUserDescription().trim().isEmpty()) {
-        // 如果用户描述存在，则将其插入到模板的对应部分
+            // 如果用户描述存在，则将其插入到模板的对应部分
             descriptionSection = PromptConstant.AGENT2_DESCRIPTION_SECTION
                     .replace("{userDescription}", state.getUserDescription());
         }
 
-    // 构建完整的 prompt，包含标题、副标题、描述部分和风格要求
+        // 构建完整的 prompt，包含标题、副标题、描述部分和风格要求
         String prompt = PromptConstant.AGENT2_OUTLINE_PROMPT
                 .replace("{mainTitle}", state.getTitle().getMainTitle())
                 .replace("{subTitle}", state.getTitle().getSubTitle())
                 .replace("{descriptionSection}", descriptionSection)
                 + getStylePrompt(state.getStyle());
 
-    // 调用大语言模型进行流式生成，并处理返回的内容
+        // 调用大语言模型进行流式生成，并处理返回的内容
         String content = callLlmWithStreaming(prompt, streamHandler, SseMessageTypeEnum.AGENT2_STREAMING);
-    // 解析 JSON 响应并转换为大纲结果对象
+        // 解析 JSON 响应并转换为大纲结果对象
         ArticleState.OutlineResult outlineResult = parseJsonResponse(content, ArticleState.OutlineResult.class, "大纲");
-    // 将生成的大纲设置到文章状态中
+        // 将生成的大纲设置到文章状态中
         state.setOutline(outlineResult);
-    // 记录日志，输出大纲生成成功的信息和大纲章节的数量
+        // 记录日志，输出大纲生成成功的信息和大纲章节的数量
         log.info("智能体2：大纲生成成功, sections={}", outlineResult.getSections().size());
     }
 
@@ -324,8 +327,27 @@ public class ArticleAgentService {
      * @return
      */
     private String callLlm(String prompt) {
-        ChatResponse res = chatModel.call(new Prompt(new UserMessage(prompt)));
-        return res.getResult().getOutput().getText();
+        String text = null;
+        try {
+            long startTime = System.currentTimeMillis();
+            ChatResponse res = chatModel.call(new Prompt(new UserMessage(prompt)));
+            long duration = System.currentTimeMillis() - startTime;
+            int promptTokens = res.getMetadata().getUsage().getPromptTokens();
+            int completionTokens = res.getMetadata().getUsage().getCompletionTokens();
+            int totalTokens = res.getMetadata().getUsage().getTotalTokens();
+            aiMetricsCollector.recordRequest(
+                    chatModel.getDefaultOptions().getModel()
+            );
+            aiMetricsCollector.recordTokens(chatModel.getDefaultOptions().getModel(), totalTokens);
+            aiMetricsCollector.recordResponseTime(chatModel.getDefaultOptions().getModel(), duration);
+
+            text = res.getResult().getOutput().getText();
+        } catch (Exception e) {
+            aiMetricsCollector.recordError(chatModel.getDefaultOptions().getModel(), "MODEL_ERROR");
+            throw e;
+        }
+
+        return text;
     }
 
     /**
@@ -339,14 +361,31 @@ public class ArticleAgentService {
     private String callLlmWithStreaming(String prompt, Consumer<String> streamHandler, SseMessageTypeEnum sseMessageTypeEnum) {
         StringBuilder contentBuilder = new StringBuilder();
         Flux<ChatResponse> stream = chatModel.stream(new Prompt(new UserMessage(prompt)));
+        final int[] tokenStats = new int[3];
+        final long[] startTime = new long[]{System.currentTimeMillis()};
         stream.doOnNext(res -> {
+                    ChatResponseMetadata metadata = res.getMetadata();
+                    if (metadata != null) {
+                        tokenStats[0] = metadata.getUsage().getPromptTokens();
+                        tokenStats[1] = metadata.getUsage().getCompletionTokens();
+                        tokenStats[2] = metadata.getUsage().getTotalTokens();
+                    }
                     String chunk = res.getResult().getOutput().getText();
                     if (chunk != null && !chunk.isEmpty()) {
                         contentBuilder.append(chunk);
                         streamHandler.accept(sseMessageTypeEnum.getStreamingPrefix() + chunk);
                     }
                 })
-                .doOnError(e -> log.error("流式调用大模型失败, prompt={}", prompt, e))
+                .doOnComplete(() -> {
+                    long duration = System.currentTimeMillis() - startTime[0];
+                    aiMetricsCollector.recordRequest(chatModel.getDefaultOptions().getModel());
+                    aiMetricsCollector.recordTokens(chatModel.getDefaultOptions().getModel(), tokenStats[2]);
+                    aiMetricsCollector.recordResponseTime(chatModel.getDefaultOptions().getModel(), duration);
+                })
+                .doOnError(e -> {
+                    aiMetricsCollector.recordError(chatModel.getDefaultOptions().getModel(), "MODEL_ERROR");
+                    log.error("流式调用大模型失败, prompt={}", prompt, e);
+                })
                 .blockLast();
         return contentBuilder.toString();
     }
@@ -435,13 +474,13 @@ public class ArticleAgentService {
      */
     private String getAllMethodsDescription() {
         return """
-               - PEXELS: 适合真实场景、产品照片、人物照片、自然风景等写实图片
-               - NANO_BANANA: 适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片
-               - MERMAID: 适合流程图、架构图、时序图、关系图、甘特图等结构化图表
-               - ICONIFY: 适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）
-               - EMOJI_PACK: 适合表情包、搞笑图片、轻松幽默的配图
-               - SVG_DIAGRAM: 适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）
-               """;
+                - PEXELS: 适合真实场景、产品照片、人物照片、自然风景等写实图片
+                - NANO_BANANA: 适合创意插画、信息图表、需要文字渲染、抽象概念、艺术风格等 AI 生成图片
+                - MERMAID: 适合流程图、架构图、时序图、关系图、甘特图等结构化图表
+                - ICONIFY: 适合图标、符号、小型装饰性图标（如：箭头、勾选、星星、心形等）
+                - EMOJI_PACK: 适合表情包、搞笑图片、轻松幽默的配图
+                - SVG_DIAGRAM: 适合概念示意图、思维导图样式、逻辑关系展示（不涉及精确数据）
+                """;
     }
 
     /**
